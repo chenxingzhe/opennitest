@@ -20,7 +20,11 @@ void CheckOpenNIError(Status result, string status)
 	if (result != STATUS_OK)
 		cerr << status << " Error: " << OpenNI::getExtendedError() << endl;
 }
-
+string num2str(int i){
+	stringstream s;
+	s << i;
+	return s.str();
+}
 int main(int argc, char** argv)
 {
 	Status result = STATUS_OK;
@@ -81,7 +85,7 @@ int main(int argc, char** argv)
 	}
 	// start color stream
 	result = oniColorStream.start();
-
+	int index = 0;
 	while (key != 27)
 	{
 		// read frame
@@ -90,17 +94,35 @@ int main(int argc, char** argv)
 			// convert data into OpenCV type
 			cv::Mat cvRGBImg(oniColorImg.getHeight(), oniColorImg.getWidth(), CV_8UC3, (void*)oniColorImg.getData());
 			cv::cvtColor(cvRGBImg, cvBGRImg, CV_RGB2BGR);
+			flip(cvBGRImg, cvBGRImg, 1);
 			cv::imshow("image", cvBGRImg);
 		}
 
 		if (oniDepthStream.readFrame(&oniDepthImg) == STATUS_OK)
 		{
 			cv::Mat cvRawImg16U(oniDepthImg.getHeight(), oniDepthImg.getWidth(), CV_16UC1, (void*)oniDepthImg.getData());
-			cvRawImg16U.convertTo(cvDepthImg, CV_8U, 255.0 / (oniDepthStream.getMaxPixelValue()));
+			double m1, m2;
+			minMaxIdx(cvRawImg16U, &m1, &m2);
+			cout << m2<< endl;
+			//cvRawImg16U.convertTo(cvDepthImg, CV_8U, 255.0 / (oniDepthStream.getMaxPixelValue()));
+			flip(cvRawImg16U, cvRawImg16U, 1);
+			cvRawImg16U.convertTo(cvDepthImg, CV_8U, 255.0 / 6000);
+			if (key == 32)
+			{
+				FileStorage fs((num2str(index++) + ".xml").c_str(), FileStorage::WRITE);
+				fs << "data" << cvRawImg16U;
+				//fs << "depth" << cvDepthImg;
+				
+				fs.release();
+				//imwrite((num2str(index++) + ".jpg").c_str(), cvRawImg16U);
+			}
 			//¡¾5¡¿
 			// convert depth image GRAY to BGR
+			
 			cv::cvtColor(cvDepthImg, cvFusionImg, CV_GRAY2BGR);
+			
 			cv::imshow("depth", cvDepthImg);
+			//imwrite((num2str(index++) + ".jpg").c_str(), cvDepthImg);
 		}
 		//¡¾6¡¿
 		cv::addWeighted(cvBGRImg, 0.5, cvFusionImg, 0.5, 0, cvFusionImg);
